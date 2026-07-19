@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuestra Boda - Mati y Poli</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Montserrat:wght@200;300;400;500;600&family=Pinyon+Script&display=swap" rel="stylesheet">
+
+    <!-- Librería para leer archivos Excel (SheetJS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'bg-cream': '#F9F8F3',     
+                        'text-green': '#2C3A30',   
+                        'accent-gold': '#C5A87C',  
+                    },
+                    fontFamily: {
+                        serif: ['"Cormorant Garamond"', 'serif'],
+                        script: ['"Pinyon Script"', 'cursive'], 
+                        sans: ['"Montserrat"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* ================= CONFIGURACIONES GLOBALES ================= */
+        body {
+            margin: 0;
+            overflow: hidden; 
+            background-color: #2C3A30; 
+            color: #2C3A30;
+            touch-action: none;
+        }
+
+        .paper-texture {
+            position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0.3;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.08'/%3E%3C/svg%3E");
+            mix-blend-mode: multiply;
+        }
+
+        .text-gold-subtle {
+            background: linear-gradient(135deg, #B8945E 0%, #D4BA8E 50%, #B8945E 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            color: #C5A87C; 
+            filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.05));
+        }
+
+        /* ================= ANIMACIONES DEL SOBRE ================= */
+        .envelope-container { perspective: 1200px; }
+        .envelope { transform-style: preserve-3d; position: relative; }
+        .flap-top {
+            clip-path: polygon(0 0, 100% 0, 50% 100%); transform-origin: top;
+            transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1), z-index 0s linear 0s;
+            z-index: 40; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.08));
+        }
+        .flap-open { 
+            transform: rotateX(180deg); z-index: 10 !important; 
+            transition: transform 0.9s cubic-bezier(0.4, 0, 0.2, 1), z-index 0s linear 0.45s; 
+        } 
+        .flap-bottom {
+            clip-path: polygon(0 0, 50% 55%, 100% 0, 100% 100%, 0 100%);
+            z-index: 30; filter: drop-shadow(0 -2px 15px rgba(0,0,0,0.05));
+        }
+        .seal { transition: opacity 0.5s ease, transform 0.5s ease; z-index: 50; }
+        .seal-broken { opacity: 0; transform: scale(1.5) translate(-50%, -50%); pointer-events: none; }
+        .letter-content { transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.8s ease; z-index: 20; }
+        .letter-extracted { transform: translateY(-80%); }
+
+        #intro-screen { transition: opacity 1.2s ease, visibility 1.2s ease; }
+        #video-container { opacity: 0; visibility: hidden; transition: opacity 1.5s ease 0.5s; }
+        #video-container.visible { opacity: 1; visibility: visible; }
+
+        .elegant-divider {
+            width: 100%; max-width: 120px; height: 1px;
+            background: linear-gradient(90deg, transparent, #C5A87C, transparent);
+            position: relative; margin: 1.5rem auto; opacity: 0.8;
+        }
+
+        /* ================= FÍSICA LENTA Y SUTIL DE PAPEL ONDULADO ================= */
+        .book-container { perspective: 2500px; }
+        #slides-container { transform-style: preserve-3d; }
+
+        .slide {
+            position: absolute; inset: 0; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background-color: #F9F8F3; 
+            border-radius: 4px;
+            transform-origin: left center; 
+            -webkit-transform-origin: left center;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            box-shadow: inset 10px 0 20px -10px rgba(0,0,0,0.08), 0 25px 50px -12px rgba(0,0,0,0.3);
+            
+            transform: rotateY(0deg);
+            opacity: 0; visibility: hidden; z-index: 10;
+        }
+
+        .slide::after {
+            content: "";
+            position: absolute; inset: 0;
+            background: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0.05) 20%, rgba(255,255,255,0.3) 50%, rgba(0,0,0,0.08) 80%, rgba(0,0,0,0) 100%);
+            opacity: 0; z-index: 50; pointer-events: none; border-radius: 4px;
+            transition: opacity 0.5s;
+        }
+
+        .slide.active { 
+            opacity: 1; visibility: visible; z-index: 20; 
+            transform: rotateY(0deg);
+        }
+
+        .slide.turned {
+            opacity: 1; visibility: visible; z-index: 10; 
+            transform: rotateY(-180deg); 
+        }
+
+        /* Animaciones a 2.5s con curvas muy delicadas para mayor disfrute visual */
+        .slide.anim-left {
+            opacity: 1; visibility: visible; z-index: 30; 
+            animation: turnPageLeft 2.5s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+        }
+        
+        .slide.anim-left::after {
+            animation: lightSweep 2.5s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+        }
+
+        .slide.anim-right {
+            opacity: 1; visibility: visible; z-index: 30; 
+            animation: turnPageRight 2.5s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+        }
+
+        .slide.anim-right::after {
+            animation: lightSweep 2.5s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+        }
+
+        /* Keyframes reajustados para una rotación y doblez más sutil */
+        @keyframes turnPageLeft {
+            0%   { transform: rotateY(0deg) rotateX(0deg) skewY(0deg) scale(1); }
+            25%  { transform: rotateY(-30deg) rotateX(1deg) skewY(-1deg) scale(0.995); }
+            50%  { transform: rotateY(-90deg) rotateX(2deg) skewY(-1.5deg) scale(0.99); box-shadow: inset 40px 0 50px -20px rgba(0,0,0,0.08), 20px 20px 40px -10px rgba(0,0,0,0.3); }
+            75%  { transform: rotateY(-140deg) rotateX(1deg) skewY(-0.5deg) scale(0.995); }
+            100% { transform: rotateY(-180deg) rotateX(0deg) skewY(0deg) scale(1); }
+        }
+
+        @keyframes turnPageRight {
+            0%   { transform: rotateY(-180deg) rotateX(0deg) skewY(0deg) scale(1); }
+            25%  { transform: rotateY(-140deg) rotateX(1deg) skewY(0.5deg) scale(0.995); }
+            50%  { transform: rotateY(-90deg) rotateX(2deg) skewY(1.5deg) scale(0.99); box-shadow: inset 40px 0 50px -20px rgba(0,0,0,0.08), 20px 20px 40px -10px rgba(0,0,0,0.3); }
+            75%  { transform: rotateY(-30deg) rotateX(1deg) skewY(1deg) scale(0.995); }
+            100% { transform: rotateY(0deg) rotateX(0deg) skewY(0deg) scale(1); }
+        }
+
+        @keyframes lightSweep {
+            0% { opacity: 0; background-position: 200% center; }
+            40% { opacity: 1; }
+            60% { opacity: 1; }
+            100% { opacity: 0; background-position: -100% center; }
+        }
+
+        /* ================= CONTROLES Y PROGRESO ================= */
+        .progress-bar-container {
+            position: absolute; top: 25px; left: 50%; transform: translateX(-50%);
+            width: 65%; max-width: 250px; display: flex; gap: 4px; z-index: 60;
+        }
+        .progress-segment {
+            flex: 1; height: 2px; background: rgba(197, 168, 124, 0.25); border-radius: 2px; overflow: hidden;
+        }
+        .progress-fill { height: 100%; width: 0%; background: #C5A87C; transition: width 0.1s linear; }
+        .progress-segment.completed .progress-fill { width: 100%; }
+
+        .nav-button {
+            position: absolute; top: 50%; transform: translateY(-50%); z-index: 60;
+            width: 35px; height: 35px; border-radius: 50%;
+            background: rgba(197, 168, 124, 0.15); border: 1px solid rgba(197, 168, 124, 0.3);
+            backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;
+            color: rgba(44, 58, 48, 0.6); cursor: pointer; transition: all 0.3s ease;
+        }
+        .nav-button:hover { background: rgba(197, 168, 124, 0.4); color: rgba(44, 58, 48, 1); }
+        .nav-button.left { left: 10px; }
+        .nav-button.right { right: 10px; }
+    </style>
+</head>
+<body class="selection:bg-[#C5A87C] selection:text-white">
+
+    <audio id="musica-boda" src="boda.mp3" loop></audio>
+
+    <div id="intro-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-bg-cream">
+        <div class="paper-texture"></div>
+        <div class="envelope-container w-[90vw] max-w-[500px] aspect-[3/2] relative mb-12 z-10">
+            <div class="envelope w-full h-full">
+                <div class="absolute inset-0 bg-[#8E9B83] rounded-sm shadow-envelope"></div>
+                <div id="letter" class="letter-content absolute top-2 bottom-2 left-2 right-2 bg-bg-cream flex flex-col items-center justify-center p-6 border border-accent-gold/20">
+                    <div class="paper-texture" style="opacity: 0.5;"></div>
+                    <div class="w-full h-full border border-accent-gold/30 flex flex-col items-center justify-center p-4 relative z-10">
+                        <span class="font-serif text-gold-subtle text-5xl mb-3 font-light">M<span class="text-3xl mx-2 text-gold-subtle not-italic font-medium">&</span>P</span>
+                        <div class="w-16 h-[1px] bg-accent-gold/50 mb-3"></div>
+                        <span class="text-text-green text-[9px] tracking-[0.4em] uppercase font-sans">Nuestra Boda</span>
+                    </div>
+                </div>
+                <div class="flap-bottom absolute inset-0 bg-[#738367] rounded-b-sm"></div>
+                <div id="flap-top" class="flap-top absolute top-0 left-0 w-full h-[65%] bg-[#8E9B83] rounded-t-sm"></div>
+                <div id="seal" class="seal absolute top-[65%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-gradient-to-br from-[#C9A86A] to-[#B8945E] shadow-seal border border-white/20 flex items-center justify-center z-50">
+                    <div class="absolute inset-1 rounded-full border border-[#8B7D70]/30"></div>
+                    <span class="font-serif text-[#F9F8F3] text-xl drop-shadow-sm z-10 not-italic">M&P</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="login-area" class="z-50 text-center px-4 max-w-lg transition-opacity duration-500">
+            <label for="guest-name" class="block font-sans font-light text-text-green/80 text-[10px] tracking-[0.3em] uppercase mb-6">Ingresa tu nombre para comenzar</label>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <input type="text" id="guest-name" class="bg-transparent border-b border-accent-gold/60 px-4 py-2 w-full sm:w-64 text-center font-serif text-text-green text-xl outline-none focus:border-text-green transition-all placeholder-text-green/30" placeholder="Familia o Invitado">
+                <button onclick="openEnvelope()" class="bg-text-green text-white font-sans font-light px-8 py-3 w-full sm:w-auto hover:bg-[#1f2922] transition-colors tracking-widest uppercase text-[10px] rounded-sm shadow-md">Entrar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="video-container" class="fixed inset-0">
+        <div class="absolute inset-0 z-0 bg-[#2C3A30]">
+            <img src="fondo.jpg" id="bg-blur" class="absolute inset-0 w-full h-full object-cover opacity-50 blur-2xl transition-opacity duration-1000 hidden" alt="">
+            <img src="fondo.jpg" id="bg-image" class="absolute inset-0 w-full h-full object-cover opacity-85 transition-all duration-1000" alt="">
+        </div>
+        <div class="absolute inset-0 bg-black/30 z-0 pointer-events-none"></div>
+
+        <div class="book-container absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] max-w-[420px] h-[86vh] max-h-[800px] z-10">
+            
+            <div id="progress-container" class="progress-bar-container pointer-events-none"></div>
+
+            <div class="nav-button left" onclick="prevSlide()">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7"></path></svg>
+            </div>
+            <div class="nav-button right" onclick="nextSlide(true)">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7"></path></svg>
+            </div>
+
+            <div id="slides-container" class="absolute inset-0 w-full h-full">
+                
+                <div class="slide">
+                    <div class="paper-texture"></div>
+                    <div class="absolute inset-[15px] pointer-events-none z-0">
+                        <div class="absolute inset-0 border border-accent-gold/80"></div>
+                        <div class="absolute inset-[5px] border border-accent-gold/80 rounded-2xl"></div>
+                    </div>
+
+                    <div class="relative z-10 flex flex-col items-center text-center">
+                        <p class="font-serif italic text-text-green text-3xl mb-5">¡Nos casamos!</p>
+                        <div class="flex flex-col items-center">
+                            <h1 class="font-script text-gold-subtle text-8xl leading-none mt-2">Mati</h1>
+                            <span class="font-serif text-gold-subtle text-3xl not-italic font-medium my-1">&</span>
+                            <h1 class="font-script text-gold-subtle text-8xl leading-none mb-2">Poli</h1>
+                        </div>
+                        <div class="elegant-divider mt-8"></div>
+                    </div>
+                </div>
+
+                <div class="slide">
+                    <div class="paper-texture"></div>
+                    <div class="absolute inset-[15px] pointer-events-none z-0">
+                        <div class="absolute inset-0 border border-accent-gold/80"></div>
+                        <div class="absolute inset-[5px] border border-accent-gold/80 rounded-2xl"></div>
+                    </div>
+
+                    <div class="relative z-10 flex flex-col items-center px-6">
+                        <p class="font-serif text-text-green text-[20px] leading-relaxed italic text-center">
+                            "Esta historia posee muchos capítulos, llenos de aventuras y un profundo amor. Hoy se escribe un nuevo episodio, uno de los más importantes y queremos compartirlo contigo, sé parte de esta hermosa historia."
+                        </p>
+                        
+                        <div class="elegant-divider my-6 w-full"></div>
+                        <div class="text-center w-full">
+                            <p class="font-sans text-accent-gold text-[9px] tracking-[0.3em] uppercase mb-1.5">Especialmente para</p>
+                            <span id="display-guest-name" class="font-serif text-text-green text-2xl italic block">Familia</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slide">
+                    <div class="paper-texture"></div>
+                    <div class="absolute inset-[15px] pointer-events-none z-0">
+                        <div class="absolute inset-0 border border-accent-gold/80"></div>
+                        <div class="absolute inset-[5px] border border-accent-gold/80 rounded-2xl"></div>
+                    </div>
+
+                    <div class="relative z-10 flex flex-col items-center text-center">
+                        <p class="font-sans text-accent-gold text-[10px] tracking-[0.4em] uppercase mb-8">Reserva la fecha</p>
+                        <div class="flex items-center justify-center gap-5">
+                            <div class="flex flex-col items-end border-r border-accent-gold/40 pr-5">
+                                <span class="font-sans text-text-green tracking-[0.2em] uppercase text-xs font-light">Noviembre</span>
+                                <span class="font-serif text-accent-gold tracking-widest uppercase text-sm mt-1">Sábado</span>
+                            </div>
+                            <span class="font-serif text-8xl text-text-green leading-none font-light">14</span>
+                            <div class="flex flex-col items-start border-l border-accent-gold/40 pl-5">
+                                <span class="font-sans text-text-green tracking-[0.2em] uppercase text-xs font-light">2026</span>
+                                <span class="font-serif text-accent-gold tracking-widest uppercase text-sm mt-1">19:00 H.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slide">
+                    <div class="paper-texture"></div>
+                    <div class="absolute inset-[15px] pointer-events-none z-0">
+                        <div class="absolute inset-0 border border-accent-gold/80"></div>
+                        <div class="absolute inset-[5px] border border-accent-gold/80 rounded-2xl"></div>
+                    </div>
+
+                    <div class="relative z-10 w-full flex flex-col gap-8 text-center px-4">
+                        <div class="flex flex-col items-center pointer-events-auto">
+                            <p class="font-sans text-accent-gold text-[8px] tracking-[0.3em] uppercase mb-1.5">Ceremonia • 19:00 h.</p>
+                            <h3 class="font-serif text-text-green text-2xl leading-tight mb-2">Parroquia<br>San Fernando Rey</h3>
+                            <a href="https://www.google.com/maps/search/?api=1&query=Parroquia+San+Fernando+Rey+San+Fernando+Chile" target="_blank" class="font-sans text-[8px] tracking-[0.2em] text-text-green uppercase border-b border-text-green/30 pb-0.5 hover:text-accent-gold hover:border-accent-gold transition-colors">Ver Mapa</a>
+                        </div>
+                        <div class="elegant-divider my-0"></div>
+                        <div class="flex flex-col items-center pointer-events-auto">
+                            <p class="font-sans text-accent-gold text-[8px] tracking-[0.3em] uppercase mb-1.5">Recepción • 21:00 h.</p>
+                            <h3 class="font-serif text-text-green text-2xl leading-tight mb-2">Centro de Eventos<br>"El Quincho"</h3>
+                            <a href="https://www.google.com/maps/search/?api=1&query=Nilcunlauta+2727+San+Fernando+Chile" target="_blank" class="font-sans text-[8px] tracking-[0.2em] text-text-green uppercase border-b border-text-green/30 pb-0.5 hover:text-accent-gold hover:border-accent-gold transition-colors">Ver Mapa</a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slide">
+                    <div class="paper-texture"></div>
+                    <div class="absolute inset-[15px] pointer-events-none z-0">
+                        <div class="absolute inset-0 border border-accent-gold/80"></div>
+                        <div class="absolute inset-[5px] border border-accent-gold/80 rounded-2xl"></div>
+                    </div>
+
+                    <div class="relative z-10 w-full flex flex-col items-center text-center px-6">
+                        <h2 class="font-script text-6xl text-text-green mb-6">Código de Vestimenta</h2>
+                        
+                        <p class="font-sans text-accent-gold tracking-[0.2em] uppercase text-[9px] mb-4 font-semibold">Dress Code</p>
+                        <p class="font-serif text-text-green text-[16px] leading-relaxed italic px-4 max-w-[280px]">
+                            "Hoy es un día para celebrar y divertirnos, queremos verte brillar con tu mejor outfit... ponte elegante y listo para disfrutar, reír y bailar."
+                        </p>
+                        
+                        <div class="elegant-divider mt-8 w-1/2"></div>
+                    </div>
+                </div>
+
+                <div class="slide">
+                    <div class="paper-texture"></div>
+                    <div class="absolute inset-[15px] pointer-events-none z-0">
+                        <div class="absolute inset-0 border border-accent-gold/80"></div>
+                        <div class="absolute inset-[5px] border border-accent-gold/80 rounded-2xl"></div>
+                    </div>
+
+                    <div class="relative z-10 w-full flex flex-col items-center text-center px-6">
+                        <h2 class="font-script text-6xl text-text-green mb-4">Mesa de Regalos</h2>
+
+                        <p class="font-serif text-text-green text-[14px] leading-relaxed italic mb-4 px-2 max-w-[310px]">
+                            "El mejor regalo es su compañía. Si desean entregarnos un obsequio, les agradeceríamos dinero para nuestros proyectos. Habrá un buzón, o pueden transferir a:"
+                        </p>
+
+                        <div class="w-full max-w-[250px] bg-white/70 p-4 rounded-sm border border-accent-gold/40 shadow-sm mt-1">
+                            <div class="font-sans text-text-green/90 text-[8px] tracking-widest uppercase space-y-2 text-left px-3">
+                                <p><span class="font-semibold text-accent-gold">Nombre:</span> Paulette Fuenzalida H.</p>
+                                <p><span class="font-semibold text-accent-gold">Banco:</span> Banco Estado</p>
+                                <p><span class="font-semibold text-accent-gold">Cuenta:</span> 19.874.633-9</p>
+                                <p><span class="font-semibold text-accent-gold">Cel:</span> +569 53244107</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="slide">
+                    <div class="paper-texture"></div>
+                    <div class="absolute inset-[15px] pointer-events-none z-0">
+                        <div class="absolute inset-0 border border-accent-gold/80"></div>
+                        <div class="absolute inset-[5px] border border-accent-gold/80 rounded-2xl"></div>
+                    </div>
+
+                    <div class="relative z-10 w-full flex flex-col items-center text-center px-6 pointer-events-auto">
+                        <h2 class="font-script text-5xl text-text-green mb-6">¡Te esperamos!</h2>
+                        
+                        <p class="font-sans text-accent-gold text-[10px] tracking-[0.15em] uppercase mb-8 font-semibold border-b border-accent-gold/30 pb-2">
+                            Responder antes del 1 de octubre
+                        </p>
+
+                        <form id="rsvp-form" class="w-full max-w-[260px] text-center">
+                            <div id="dynamic-family-inputs" class="mb-6">
+                                <input type="text" id="rsvp-name" class="w-full bg-transparent border-b border-text-green/40 py-2 font-serif text-text-green text-center text-lg outline-none focus:border-accent-gold transition-colors placeholder-text-green/40 mx-auto block" placeholder="Tu nombre completo" required>
+                                
+                                <div class="flex justify-center gap-8 font-sans text-[10px] tracking-widest text-text-green uppercase mt-6">
+                                    <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="attendance" value="yes" class="accent-text-green w-3 h-3" required> Sí, asistiré</label>
+                                    <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="attendance" value="no" class="accent-text-green w-3 h-3"> No asistiré</label>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="bg-text-green text-white font-sans text-[10px] tracking-[0.2em] uppercase py-3 px-8 mt-6 hover:bg-[#1f2922] transition-colors w-full mx-auto block shadow-md">Confirmar</button>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Objeto vacío que se llenará con los datos de GitHub
+        let GUEST_DATABASE = {};
+
+        let currentSlide = 0;
+        let slides = [];
+        let progressSegments = [];
+        let slideInterval;
+        const timePerSlide = 8500; 
+        let progressAnimation;
+        let matchedFamily = null; 
+
+        // Función para estandarizar el texto de búsqueda (quita tildes y pasa a minúsculas)
+        function cleanText(text) {
+            return text.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
+        }
+
+        // ================= FUNCIÓN PARA LEER EXCEL DESDE GITHUB ================= //
+        async function loadGuestData() {
+            // Reemplaza ESTA URL con la URL "Raw" de tu archivo en GitHub.
+            // Para obtenerla: ve a tu repositorio, abre Lista de Invitados.xlsx y haz clic en "Download" o "View Raw" y copia el enlace.
+            const githubRawUrl = ""https://raw.githubusercontent.com/matiaspobletefuenzalida-hub/boda3/main/Lista%20de%20Invitados.xlsx";
+            
+            try {
+                const response = await fetch(githubRawUrl);
+                const arrayBuffer = await response.arrayBuffer();
+                const data = new Uint8Array(arrayBuffer);
+                const workbook = XLSX.read(data, {type: 'array'});
+                
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                
+                const json = XLSX.utils.sheet_to_json(worksheet);
+                
+                json.forEach(row => {
+                    if(row.Clave && row.Familia && row.Miembros) {
+                        const claveLimpia = cleanText(String(row.Clave));
+                        GUEST_DATABASE[claveLimpia] = {
+                            familyDisplay: String(row.Familia),
+                            members: String(row.Miembros).split(',').map(m => m.trim())
+                        };
+                    }
+                });
+                console.log("Base de datos cargada correctamente.");
+            } catch (error) {
+                console.error("Error al cargar la lista de invitados. Asegúrate de haber puesto el link 'Raw' correcto y que el archivo sea público:", error);
+            }
+        }
+
+        function openEnvelope() {
+            const audio = document.getElementById('musica-boda');
+            if (audio) audio.play().catch(() => {});
+
+            const guestNameInput = document.getElementById('guest-name').value.trim();
+            matchedFamily = GUEST_DATABASE[cleanText(guestNameInput)] || null;
+
+            if (matchedFamily) {
+                document.getElementById('display-guest-name').textContent = matchedFamily.familyDisplay;
+                buildDynamicForm(matchedFamily.members);
+            } else {
+                document.getElementById('display-guest-name').textContent = guestNameInput || 'Familia y Amigos';
+                buildSingleForm(guestNameInput);
+            }
+
+            document.getElementById('login-area').style.opacity = '0';
+            setTimeout(() => document.getElementById('seal').classList.add('seal-broken'), 400);
+            setTimeout(() => document.getElementById('flap-top').classList.add('flap-open'), 800);
+            setTimeout(() => document.getElementById('letter').classList.add('letter-extracted'), 1500);
+
+            setTimeout(() => {
+                document.getElementById('intro-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('intro-screen').style.display = 'none';
+                    document.getElementById('video-container').classList.add('visible');
+                    initVideo();
+                }, 1200); 
+            }, 2800);
+        }
+
+        function buildDynamicForm(members) {
+            const container = document.getElementById('dynamic-family-inputs');
+            let html = `<p class="font-sans text-[8px] tracking-[0.2em] text-accent-gold uppercase mb-3 text-center font-semibold">Confirma por persona</p><div class="space-y-3 border-t border-b border-accent-gold/20 py-3 w-full mx-auto">`;
+            members.forEach((member, index) => {
+                html += `
+                    <div class="flex items-center justify-between text-left">
+                        <span class="font-serif text-sm text-text-green font-medium">${member}</span>
+                        <div class="flex gap-3 font-sans text-[8px] tracking-widest text-text-green uppercase">
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="att-${index}" value="Sí" required> Sí</label>
+                            <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="att-${index}" value="No"> No</label>
+                        </div>
+                    </div>`;
+            });
+            container.innerHTML = html + `</div>`;
+            setTimeout(() => container.querySelectorAll('input').forEach(r => r.addEventListener('change', stopTimer)), 500);
+        }
+
+        function buildSingleForm(name) {
+            document.getElementById('dynamic-family-inputs').innerHTML = `
+                <input type="text" id="rsvp-name" class="w-full bg-transparent border-b border-text-green/40 py-2 font-serif text-text-green text-center text-lg outline-none focus:border-accent-gold transition-colors placeholder-text-green/40 mx-auto block" placeholder="Tu nombre completo" required value="${name}">
+                <div class="flex justify-center gap-8 font-sans text-[10px] tracking-widest text-text-green uppercase mt-6">
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="attendance" value="yes" required class="w-3 h-3"> Sí, asistiré</label>
+                    <label class="flex items-center gap-2 cursor-pointer"><input type="radio" name="attendance" value="no" class="w-3 h-3"> No asistiré</label>
+                </div>`;
+            document.getElementById('rsvp-name').addEventListener('focus', stopTimer);
+        }
+
+        function stopTimer() {
+            clearInterval(slideInterval);
+            cancelAnimationFrame(progressAnimation);
+            if(progressSegments[currentSlide]) progressSegments[currentSlide].style.width = '100%';
+        }
+
+        function initVideo() {
+            slides = document.querySelectorAll('.slide');
+            const progressContainer = document.getElementById('progress-container');
+            slides.forEach((_, index) => {
+                const seg = document.createElement('div');
+                seg.className = 'progress-segment';
+                seg.innerHTML = `<div class="progress-fill" id="fill-${index}"></div>`;
+                progressContainer.appendChild(seg);
+                progressSegments.push(document.getElementById('fill-'+index));
+            });
+            showSlide(0);
+        }
+
+        function showSlide(index) {
+            clearInterval(slideInterval);
+            cancelAnimationFrame(progressAnimation);
+
+            let isNext = index > currentSlide;
+
+            slides.forEach((slide, i) => {
+                slide.classList.remove('active', 'turned', 'anim-left', 'anim-right');
+                
+                if (i < index) {
+                    if (isNext && i === currentSlide) {
+                        slide.classList.add('anim-left');
+                    } else {
+                        slide.classList.add('turned'); 
+                    }
+                    if(progressSegments[i]) {
+                        progressSegments[i].style.width = '100%';
+                        progressSegments[i].parentElement.classList.add('completed');
+                    }
+                } else if (i === index) {
+                    if (!isNext && currentSlide !== -1 && i === index && currentSlide > index) {
+                        slide.classList.add('anim-right');
+                    } else {
+                        slide.classList.add('active'); 
+                    }
+                    if(progressSegments[i]) {
+                        progressSegments[i].style.width = '0%';
+                        progressSegments[i].parentElement.classList.remove('completed');
+                    }
+                } else {
+                    if(progressSegments[i]) {
+                        progressSegments[i].style.width = '0%';
+                        progressSegments[i].parentElement.classList.remove('completed');
+                    }
+                }
+            });
+
+            currentSlide = index;
+
+            if (index === slides.length - 1) {
+                progressSegments[index].style.width = '100%';
+                return; 
+            }
+
+            let start = null;
+            function step(timestamp) {
+                if (!start) start = timestamp;
+                let progress = timestamp - start;
+                progressSegments[index].style.width = Math.min((progress / timePerSlide) * 100, 100) + '%';
+                if (progress < timePerSlide) progressAnimation = requestAnimationFrame(step);
+            }
+            progressAnimation = requestAnimationFrame(step);
+            slideInterval = setInterval(() => nextSlide(), timePerSlide);
+        }
+
+        function nextSlide(manual = false) {
+            if (manual) stopTimer();
+            if (currentSlide < slides.length - 1) showSlide(currentSlide + 1);
+        }
+        
+        function prevSlide() {
+            stopTimer();
+            if (currentSlide > 0) showSlide(currentSlide - 1);
+        }
+
+        document.getElementById('rsvp-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            this.innerHTML = `<div class="text-center py-6 mt-4"><p class="text-5xl font-script text-text-green mb-3">¡Gracias!</p><p class="font-sans text-accent-gold text-[10px] tracking-[0.3em] uppercase">Confirmado con éxito.</p></div>`;
+        });
+        
+        // Modificación del evento load para ejecutar loadGuestData() al arrancar
+        window.addEventListener('load', () => {
+            document.getElementById('bg-image').classList.add('object-cover');
+            loadGuestData();
+        });
+    </script>
+</body>
+</html>
