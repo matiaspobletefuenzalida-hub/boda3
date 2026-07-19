@@ -324,7 +324,7 @@
 
         // ================= FUNCIÓN PARA LEER EXCEL DESDE GOOGLE DRIVE ================= //
         async function loadGuestData() {
-            const googleSheetUrl = "https://docs.google.com/spreadsheets/d/1XlpAYrWs1WFhHAb4puE1zJ_2LCDP9nSnh9ZnZPxXnpw/export?format=xlsx&gid=1656520196";
+            const googleSheetUrl = "https://docs.google.com/spreadsheets/d/1XlpAYrWs1WFhHAb4puE1zJ_2LCDP9nSnh9ZnZPxXnpw/edit?usp=sharing";
             try {
                 const response = await fetch(googleSheetUrl);
                 const arrayBuffer = await response.arrayBuffer();
