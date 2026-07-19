@@ -406,7 +406,7 @@
     </div>
 
     <script>
-        // Objeto vacío que se llenará con los datos de GitHub
+        // Objeto vacío que se llenará con los datos de Google Drive
         let GUEST_DATABASE = {};
 
         let currentSlide = 0;
@@ -422,14 +422,13 @@
             return text.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); 
         }
 
-        // ================= FUNCIÓN PARA LEER EXCEL DESDE GITHUB ================= //
+        // ================= FUNCIÓN PARA LEER EXCEL DESDE GOOGLE DRIVE ================= //
         async function loadGuestData() {
-            // Reemplaza ESTA URL con la URL "Raw" de tu archivo en GitHub.
-            // Para obtenerla: ve a tu repositorio, abre Lista de Invitados.xlsx y haz clic en "Download" o "View Raw" y copia el enlace.
-            const githubRawUrl = ""https://raw.githubusercontent.com/matiaspobletefuenzalida-hub/boda3/main/Lista%20de%20Invitados.xlsx";
+            // URL de exportación directa generada a partir de tu enlace de Drive
+            const googleSheetUrl = "https://docs.google.com/spreadsheets/d/1XlpAYrWs1WFhHAb4puE1zJ_2LCDP9nSnh9ZnZPxXnpw/export?format=xlsx&gid=1656520196";
             
             try {
-                const response = await fetch(githubRawUrl);
+                const response = await fetch(googleSheetUrl);
                 const arrayBuffer = await response.arrayBuffer();
                 const data = new Uint8Array(arrayBuffer);
                 const workbook = XLSX.read(data, {type: 'array'});
@@ -440,6 +439,7 @@
                 const json = XLSX.utils.sheet_to_json(worksheet);
                 
                 json.forEach(row => {
+                    // Verifica que las columnas Clave, Familia y Miembros existan en tu Drive
                     if(row.Clave && row.Familia && row.Miembros) {
                         const claveLimpia = cleanText(String(row.Clave));
                         GUEST_DATABASE[claveLimpia] = {
@@ -448,9 +448,9 @@
                         };
                     }
                 });
-                console.log("Base de datos cargada correctamente.");
+                console.log("Base de datos cargada correctamente desde Google Drive.");
             } catch (error) {
-                console.error("Error al cargar la lista de invitados. Asegúrate de haber puesto el link 'Raw' correcto y que el archivo sea público:", error);
+                console.error("Error al cargar la lista. Asegúrate de que el Google Sheet esté configurado como 'Cualquier usuario que tenga el vínculo':", error);
             }
         }
 
